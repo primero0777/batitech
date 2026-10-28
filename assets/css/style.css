@@ -169,11 +169,22 @@ html.lock,html.lock body{overflow:hidden}
 .counter .n{font-weight:800;font-size:clamp(2.8rem,6vw,5.2rem);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
 .counter .n small{color:#7cc3ff;font-size:.42em;margin-left:4px}
 .counter .l{font-size:13px;color:#9fb0cf;margin-top:6px}
+/* Mobile : l'image reste nette en bandeau, le texte passe dessous */
 @media (max-width:700px){
-  .scrim{background:linear-gradient(0deg,rgba(6,14,34,.95) 0%,rgba(6,14,34,.72) 42%,rgba(6,14,34,0) 70%)}
-  .caps{bottom:84px}
-  .film .d1{font-size:clamp(1.9rem,8vw,2.4rem)}
+  .film{--band:min(96vw,50svh)}
+  .film canvas,.film .scrim{top:calc(64px + env(safe-area-inset-top,0px));bottom:auto;height:var(--band)}
+  .film .scrim{background:linear-gradient(0deg,#06102a 0%,rgba(6,16,42,0) 38%)}
+  .caps{top:calc(64px + env(safe-area-inset-top,0px) + var(--band) - 12px);bottom:auto}
+  .cap{bottom:auto;top:0}
+  .film .d1{font-size:clamp(1.65rem,7vw,2.1rem)}
+  .film .lede{font-size:15px;margin-top:12px}
+  .film .kicker{margin-bottom:10px}
+  .film .actions{margin-top:18px}
+  .film .actions .btn{padding:12px 18px;font-size:14px}
+  .counter{top:calc(76px + env(safe-area-inset-top,0px))}
+  .counter .n{font-size:2.4rem}
 }
+@media (max-width:700px) and (max-height:700px){.film .lede,.film .btn.ghost{display:none}}
 
 /* ---------- Prestations ---------- */
 .services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}

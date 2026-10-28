@@ -72,7 +72,7 @@ function Film(section){
   function draw(p){const idx=Math.round(clamp(mapP(p))*(count-1)),im=pick(idx);if(!im||!W)return;
     const key=idx+(im===imgs[idx]?.5:0)+Math.round(p*400)*1000;if(key===last)return;last=key;
     const iw=im.naturalWidth,ih=im.naturalHeight,s=Math.max(W/iw,H/ih)*dpr*lerp(z[0],z[1],p),dw=iw*s,dh=ih*s;
-    const ox=clamp(canvas.width/2-dw*(W/H<.85?focus:.5),canvas.width-dw,0);ctx.drawImage(im,ox,(canvas.height-dh)/2,dw,dh)}
+    const ox=clamp(canvas.width/2-dw*(W/H<1.6?focus:.5),canvas.width-dw,0);ctx.drawImage(im,ox,(canvas.height-dh)/2,dw,dh)}
   caps.forEach(c=>{if(c.h&&!reduce){split(c.h);if(c.a>0)c.h.classList.add('split-wait')}});
   return{tick(){
     const r=section.getBoundingClientRect();if(r.bottom<0||r.top>innerHeight)return false;
