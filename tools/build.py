@@ -4,7 +4,7 @@ Usage : python3 tools/build.py .   (depuis la racine du dépôt)
 """
 import os, sys
 OUT = sys.argv[1] if len(sys.argv) > 1 else '.'
-V = '5'  # anti-cache des CSS/JS
+V = '6'  # anti-cache des CSS/JS
 
 I_PHONE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1Z"/></svg>'
 I_WA = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>'
@@ -65,20 +65,25 @@ def footer():
 def call_actions():
     return f'<div class="actions"><a class="btn" data-tel href="#">{I_PHONE}Appeler maintenant</a><a class="btn ghost" data-wa="Bonjour BATITECH, j\'ai besoin d\'une intervention." href="#">{I_WA}Écrire sur WhatsApp</a></div>'
 
-def reel(seq, count, kicker, title, lede, steps, focus='.5', badge=None, alt=''):
-    lis = ''.join(f'<li data-at="{at}"{" class=\"on\"" if i == 0 else ""}><b>{t}</b><span>{d}</span></li>' for i, (at, t, d) in enumerate(steps))
-    b = f'<span class="reel-badge" data-counter>0 %</span>' if badge else ''
-    return f'''<section class="reel wrap" data-seq="assets/frames/{seq}" data-count="{count}" data-focus="{focus}" aria-label="{alt}">
-<div class="reel-stage inner">
-  <div class="reel-text">
-    <p class="kicker">{kicker}</p>
-    <h1 class="d1" data-split>{title}</h1>
-    <p class="lede">{lede}</p>
-    <ol class="reel-steps">{lis}</ol>
-    <div class="reel-actions">{call_actions()}</div>
-  </div>
-  <div class="reel-frame"><canvas role="img" aria-label="{alt}"></canvas>{b}<div class="reel-bar"><i></i></div></div>
+def film(seq, count, caps, steps, labels, focus='.5', zoom='1.06,1', remap=None, counter=None, alt=''):
+    '''Film plein écran : caps = [(de, à, kicker, titre, texte, extra)], titre en <h1> pour la 1re légende.'''
+    html = ''
+    for i, (a, b, kick, h, p, extra) in enumerate(caps):
+        tag = 'h1' if i == 0 else 'h2'
+        html += f'''<div class="cap{' first' if i == 0 else ''}" data-from="{a}" data-to="{b}">
+  <p class="kicker">{kick}</p><{tag} class="d1" data-split>{h}</{tag}>{f'<p class="lede">{p}</p>' if p else ''}{extra}
+</div>'''
+    tl = ''.join(f'<span{" class=\"on\"" if i == 0 else ""}>{l}</span>' for i, l in enumerate(labels))
+    cnt = f'<div class="counter" aria-hidden="true"><div class="n"><span data-counter>00</span><small>%</small></div><div class="l">{counter}</div></div>' if counter else ''
+    rm = f' data-remap="{remap}"' if remap else ''
+    return f'''<section class="film" data-seq="assets/frames/{seq}" data-count="{count}" data-focus="{focus}" data-zoom="{zoom}"{rm} aria-label="{alt}">
+<div class="stage"><canvas role="img" aria-label="{alt}"></canvas><div class="scrim"></div>{cnt}
+<div class="caps">{html}</div>
+<div class="tl" data-steps="{steps}" aria-hidden="true"><i class="fill"></i>{tl}</div>
 </div></section>'''
+
+def cta_btn(label, href='contact.html'):
+    return f'<div class="actions"><a class="btn" href="{href}">{label}{I_ARROW}</a></div>'
 
 def sec_head(kicker, title, lede):
     return f'<div class="sec-head"><div><p class="kicker">{kicker}</p><h2 class="d2" data-split>{title}</h2></div><p class="lede">{lede}</p></div>'
@@ -112,21 +117,13 @@ def page(fname, title, desc, body):
     open(os.path.join(OUT, fname), 'w').write(html)
 
 # ============================== ACCUEIL ==============================
-home = f'''<section class="wrap hero"><div class="inner hero-grid">
-  <div>
-    <p class="kicker">Basés à Amadahomé, Lomé</p>
-    <h1 class="d1" data-split>Plomberie, électricité et forage, par une seule équipe.</h1>
-    <p class="lede">BATITECH dépanne, installe et entretient vos réseaux d’eau et d’électricité, et réalise vos forages de puits dans tout le Grand Lomé.</p>
-    {call_actions()}
-    <ul class="facts"><li>{I_CHECK}Devis gratuit</li><li>{I_CHECK}Déplacement dans le Grand Lomé</li><li>{I_CHECK}Un seul interlocuteur</li></ul>
-  </div>
-  <div class="mosaic">
-    <figure><img src="assets/img/forage-apres.webp" alt="Forage de puits au crépuscule, l’eau jaillit" style="object-position:62% center" fetchpriority="high"><figcaption>Forage</figcaption></figure>
-    <figure><img src="assets/img/fuite-apres.webp" alt="Plomberie chromée neuve" style="object-position:62% center"><figcaption>Plomberie</figcaption></figure>
-    <figure><img src="assets/img/elec-apres.webp" alt="Tableau électrique neuf" style="object-position:72% center"><figcaption>Électricité</figcaption></figure>
-  </div>
-</div></section>
-
+home = film('fuite', 99, [
+  (-1,.24,'Basés à Amadahomé, Lomé','Plomberie, électricité et forage, par une seule équipe.','BATITECH dépanne, installe et entretient vos réseaux d’eau et d’électricité, et réalise vos forages de puits dans tout le Grand Lomé.', call_actions()),
+  (.26,.5,'Le problème','Une fuite, un court-circuit, une pompe qui lâche ?','On se déplace, on coupe ce qu’il faut couper et on trouve l’origine de la panne.',''),
+  (.52,.76,'La réparation','Réparé avec du matériel qui tient dans le temps.','Raccords, joints, vannes, câbles, disjoncteurs : la pièce usée est remplacée, pas bricolée.',''),
+  (.78,2,'Le résultat','Propre, sec et contrôlé.','On remet en eau ou sous tension devant vous et on vérifie que tout fonctionne avant de partir.', cta_btn('Demander un devis')),
+], '.26,.52,.78', ['Panne','Réparation','Contrôle'], focus='.62', zoom='1.08,1', remap='0:0 .25:.12 .5:.3 .76:.62 1:1', alt='Raccord rouillé qui fuit, puis plomberie chromée neuve')
+home += f'''
 <section class="wrap sec alt"><div class="inner">
 {sec_head('Nos métiers','Trois métiers qui travaillent ensemble.','L’eau qui arrive, l’eau qui s’évacue, le courant qui alimente la pompe : chez vous, tout est lié. Un seul interlocuteur s’occupe de l’ensemble.')}
 <div class="trades">
@@ -149,10 +146,12 @@ home = f'''<section class="wrap hero"><div class="inner hero-grid">
 page('index.html','BATITECH — Plomberie, électricité et forage à Lomé','Plomberie, électricité et forage de puits à Lomé. Dépannage, installation, salles de bains, tableaux électriques, forages et pompes. Basés à Amadahomé.', home)
 
 # ============================== PLOMBERIE ==============================
-plo = reel('fuite', 99, 'Plomberie', 'Une fuite ? On la répare pour de bon.',
-  'Dépannage de fuites, débouchage, installations sanitaires et salles de bains complètes.',
-  [(0,'La fuite','On coupe l’eau et on limite les dégâts.'),(.18,'Le diagnostic','On trouve la pièce qui a lâché : joint, raccord, vanne.'),(.34,'La réparation','La pièce usée est remplacée par du matériel qui dure.'),(.66,'Le contrôle','Remise en eau et vérification avant de partir.')],
-  focus='.62', alt='Raccord rouillé qui fuit, puis plomberie chromée neuve')
+plo = film('sdb', 99, [
+  (-1,.26,'Plomberie et sanitaire','Du mur brut à la salle de bains finie.','Création et rénovation de salles de bains, réseaux d’eau et évacuations, dépannage de fuites.', call_actions()),
+  (.28,.56,'Avant le carrelage','Le travail qu’on ne voit pas, fait dans les règles.','Arrivées d’eau et évacuations posées avec les bonnes pentes, étanchéité sous les revêtements, réseau testé avant fermeture.',''),
+  (.58,.84,'Les finitions','Vasque et robinetterie posées de niveau.','Chaque élément est choisi avec vous et raccordé proprement, sans joint qui dépasse.',''),
+  (.86,2,'La livraison','Livré propre, prêt à servir.','', cta_btn('Parler de mon projet')),
+], '.28,.58,.86', ['Gros œuvre','Réseaux','Finitions'], zoom='1.04,1', counter='avancement du chantier', alt='Salle de bains en chantier, puis terminée en marbre vert')
 plo += f'''
 <section class="wrap sec alt"><div class="inner">
 {sec_head('Prestations','Ce qu’on fait en plomberie.','Du robinet qui goutte à la salle de bains complète, avec le même soin.')}
@@ -166,10 +165,12 @@ plo += f'''
 page('plomberie.html','Plomberie — BATITECH','Plombier à Lomé : fuites, débouchage, installations sanitaires, salles de bains complètes, chauffe-eau, surpresseurs. Devis gratuit.', plo)
 
 # ============================== ÉLECTRICITÉ ==============================
-ele = reel('elec', 99, 'Électricité', 'Une installation électrique sûre, du câble au tableau.',
-  'Installation, rénovation et dépannage pour maisons, boutiques et bureaux.',
-  [(0,'La panne','Fils qui chauffent, disjoncteur qui saute : on coupe et on cherche la cause.'),(.3,'La mise en sécurité','Câbles de bonne section et connexions refaites proprement.'),(.6,'Le nouveau tableau','Disjoncteurs adaptés, différentiel et repérage de chaque circuit.'),(.86,'La remise sous tension','On rallume et on vérifie chaque circuit devant vous.')],
-  focus='.7', alt='Boîte électrique brûlée, puis tableau électrique neuf')
+ele = film('elec', 99, [
+  (-1,.26,'Électricité générale','Des fils qui chauffent, un disjoncteur qui saute ?','Installation, rénovation et dépannage électrique pour maisons, boutiques et bureaux.', call_actions()),
+  (.28,.56,'La mise en sécurité','On coupe, on trace, on refait proprement.','Câbles de bonne section, connexions serrées, circuits séparés : on élimine ce qui provoque chauffes et étincelles.',''),
+  (.58,.84,'Le tableau','Un tableau clair, chaque circuit protégé.','Disjoncteurs adaptés, différentiel pour protéger les personnes, repérage de chaque circuit.',''),
+  (.86,2,'Le résultat','Le courant revient, en sécurité.','', cta_btn('Demander un devis')),
+], '.28,.58,.86', ['Panne','Mise en sécurité','Tableau'], focus='.66', zoom='1.08,1', alt='Boîte électrique brûlée, puis tableau électrique neuf')
 ele += f'''
 <section class="wrap sec alt"><div class="inner">
 {sec_head('Prestations','Ce qu’on fait en électricité.','Une installation bien faite, c’est moins de pannes, moins d’appareils grillés et moins de risques d’incendie.')}
@@ -183,10 +184,12 @@ ele += f'''
 page('electricite.html','Électricité — BATITECH','Électricien à Lomé : installation électrique neuve, rénovation et mise en sécurité, tableaux, dépannage, éclairage. Devis gratuit.', ele)
 
 # ============================== FORAGE ==============================
-forg = reel('forage', 99, 'Forage de puits', 'Votre propre eau, toute l’année.',
-  'On réalise votre forage et on l’équipe pour que l’eau arrive jusqu’au robinet.',
-  [(0,'La foration','Après étude du terrain, on fore jusqu’à la nappe.'),(.42,'L’eau jaillit','Le forage est développé et le débit est mesuré.'),(.75,'L’équipement','Pompe, réservoir et raccordement jusqu’à vos robinets.')],
-  focus='.62', alt='Foreuse au crépuscule, puis l’eau jaillit du forage')
+forg = film('forage', 99, [
+  (-1,.24,'Forage de puits','Pas d’eau courante, ou pas assez ?','On réalise votre forage et on l’équipe pour que l’eau arrive au robinet, toute l’année.', call_actions()),
+  (.26,.52,'La foration','On fore jusqu’à la nappe.','Implantation choisie après étude du terrain, puis foration et pose du tubage pour protéger l’ouvrage.',''),
+  (.54,.8,'L’eau','L’eau jaillit. Elle est à vous.','Développement du forage et essai de débit pour connaître ce que votre puits peut fournir.',''),
+  (.82,2,'L’équipement','Pompe, réservoir, robinet.','Pompe immergée ou solaire, château d’eau et raccordement à la maison.', cta_btn('Étudier mon terrain')),
+], '.26,.54,.82', ['Foration','Eau','Équipement'], focus='.62', zoom='1.06,1', alt='Foreuse au crépuscule, puis l’eau jaillit du forage')
 forg += f'''
 <section class="wrap sec alt"><div class="inner">
 {sec_head('Les étapes','Un forage, étape par étape.','Chaque étape conditionne la qualité et la durée de vie de votre puits. Aucune n’est sautée.')}

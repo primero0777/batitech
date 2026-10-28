@@ -2,8 +2,8 @@
    BATITECH — interactions (v2, sobre)
    - titres qui montent mot par mot (à l'apparition)
    - léger fondu des blocs sous la ligne de flottaison
-   - séquences « avant → après » au scroll dans un cadre (pages métiers),
-     images chargées seulement à l'approche de la section
+   - films plein écran pilotés par le scroll (séquences d'images),
+     chargées à l'approche de la section
    - menu mobile, FAQ, comparateurs avant/après, formulaire WhatsApp
    ===================================================================== */
 (function(){
@@ -44,41 +44,51 @@ function play(el){split(el);el.classList.add('split-wait');requestAnimationFrame
 if(!reduce&&'IntersectionObserver' in window){
   const io=new IntersectionObserver(es=>es.forEach(e=>{if(!e.isIntersecting)return;io.unobserve(e.target);
     if(e.target.hasAttribute('data-split'))play(e.target);else e.target.classList.remove('pending')}),{rootMargin:'0px 0px -10% 0px'});
-  $$('[data-split]').forEach(el=>{split(el);el.classList.add('split-wait');io.observe(el)});
+  $$('[data-split]').forEach(el=>{if(el.closest('.cap'))return;split(el);el.classList.add('split-wait');io.observe(el)});
   $$('.rv').forEach(el=>{if(el.getBoundingClientRect().top>innerHeight*.92){el.classList.add('pending');io.observe(el)}});
 }
 
-/* ---------- Séquences « avant → après » ---------- */
-function Reel(section){
+/* ---------- Films plein écran pilotés par le scroll ---------- */
+function Film(section){
   const canvas=$('canvas',section),ctx=canvas.getContext('2d');
-  const base=section.dataset.seq,count=+section.dataset.count,focus=+(section.dataset.focus||.5);
-  const steps=$$('.reel-steps li',section).map(li=>({li,at:+li.dataset.at}));
-  const bar=$('.reel-bar i',section),badge=$('[data-counter]',section);
-  const imgs=new Array(count);let W=0,H=0,dpr=1,cur=0,target=0,started=false,last=-1;
+  const base=section.dataset.seq,count=+section.dataset.count;
+  const focus=+(section.dataset.focus||.5),z=(section.dataset.zoom||'1,1').split(',').map(Number);
+  const remap=section.dataset.remap?section.dataset.remap.split(' ').map(x=>x.split(':').map(Number)):null;
+  const caps=$$('.cap',section).map(el=>({el,a:+el.dataset.from,b:+el.dataset.to,h:$('[data-split]',el),played:false}));
+  const tl=$('.tl',section),fill=tl&&$('.fill',tl),labels=tl?$$('span',tl):[],tsteps=tl?tl.dataset.steps.split(',').map(Number):[];
+  const counter=$('[data-counter]',section);
+  const imgs=new Array(count);let W=0,H=0,dpr=1,cur=0,target=0,last=-1,started=false;
   const url=i=>`${base}/${String(i+1).padStart(4,'0')}.webp`;
   const resize=()=>{dpr=Math.min(devicePixelRatio||1,2);W=canvas.clientWidth;H=canvas.clientHeight;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);last=-1};
   new ResizeObserver(resize).observe(canvas);resize();
   const loadOne=i=>new Promise(res=>{const im=new Image();im.decoding='async';im.onload=()=>{imgs[i]=im;last=-1;res()};im.onerror=res;im.src=url(i)});
-  // la 1re et la dernière image tout de suite (aperçu), le reste à l'approche
-  loadOne(0).then(()=>loadOne(count-1));
+  loadOne(0);
   function start(){if(started)return;started=true;
-    const order=[];const step=Math.max(1,Math.floor(count/10));for(let i=step;i<count-1;i+=step)order.push(i);for(let i=1;i<count-1;i++)if(!order.includes(i))order.push(i);
-    let k=0;const worker=()=>k<order.length?loadOne(order[k++]).then(worker):null;for(let n=0;n<4;n++)worker()}
+    const order=[];const step=Math.max(1,Math.floor(count/12));for(let i=step;i<count;i+=step)order.push(i);for(let i=1;i<count;i++)if(!order.includes(i))order.push(i);
+    let k=0;const worker=()=>k<order.length?loadOne(order[k++]).then(worker):null;for(let n=0;n<5;n++)worker()}
   new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))start()},{rootMargin:'150% 0px'}).observe(section);
   const pick=i=>{if(imgs[i])return imgs[i];for(let d=1;d<count;d++){if(imgs[i-d])return imgs[i-d];if(imgs[i+d])return imgs[i+d]}return null};
-  function draw(p){const idx=Math.round(clamp(p)*(count-1)),im=pick(idx);if(!im||!W)return;const key=idx+(im===imgs[idx]?.5:0);if(key===last)return;last=key;
-    const iw=im.naturalWidth,ih=im.naturalHeight,s=Math.max(W/iw,H/ih)*dpr,dw=iw*s,dh=ih*s;
-    const ox=clamp(canvas.width/2-dw*(W/H<1.2?focus:.5),canvas.width-dw,0);ctx.drawImage(im,ox,(canvas.height-dh)/2,dw,dh)}
+  const mapP=p=>{if(!remap)return p;for(let i=1;i<remap.length;i++){const [a0,b0]=remap[i-1],[a1,b1]=remap[i];if(p<=a1)return lerp(b0,b1,clamp((p-a0)/(a1-a0)))}return p};
+  function draw(p){const idx=Math.round(clamp(mapP(p))*(count-1)),im=pick(idx);if(!im||!W)return;
+    const key=idx+(im===imgs[idx]?.5:0)+Math.round(p*400)*1000;if(key===last)return;last=key;
+    const iw=im.naturalWidth,ih=im.naturalHeight,s=Math.max(W/iw,H/ih)*dpr*lerp(z[0],z[1],p),dw=iw*s,dh=ih*s;
+    const ox=clamp(canvas.width/2-dw*(W/H<.85?focus:.5),canvas.width-dw,0);ctx.drawImage(im,ox,(canvas.height-dh)/2,dw,dh)}
+  caps.forEach(c=>{if(c.h&&!reduce){split(c.h);if(c.a>0)c.h.classList.add('split-wait')}});
   return{tick(){
     const r=section.getBoundingClientRect();if(r.bottom<0||r.top>innerHeight)return false;
-    target=clamp(-r.top/(r.height-innerHeight)*1.08-.02);cur=reduce?target:lerp(cur,target,.14);if(Math.abs(cur-target)<1e-4)cur=target;
-    draw(cur);if(bar)bar.style.transform=`scaleX(${cur.toFixed(4)})`;
-    if(badge)badge.textContent=Math.round(cur*100)+' %';
-    let on=0;steps.forEach((s,i)=>{if(cur>=s.at)on=i});steps.forEach((s,i)=>s.li.classList.toggle('on',i===on));
-    return r.top<innerHeight*.5&&r.bottom>innerHeight*.5;
+    target=clamp(-r.top/(r.height-innerHeight));cur=reduce?target:lerp(cur,target,.12);if(Math.abs(cur-target)<1e-4)cur=target;
+    draw(cur);
+    caps.forEach(c=>{const o=clamp((cur-c.a)/.035)*(1-clamp((cur-(c.b-.035))/.035));
+      c.el.style.opacity=o.toFixed(3);c.el.style.visibility=o<.01?'hidden':'visible';c.el.classList.remove('first');
+      if(o>.5&&!c.played&&c.h){c.played=true;c.h.classList.remove('split-wait')}
+      if(o<.01&&c.played&&c.h&&!reduce&&c.a>0){c.played=false;c.h.classList.add('split-wait')}});
+    if(fill)fill.style.transform=`scaleX(${cur.toFixed(4)})`;
+    labels.forEach((l,i)=>l.classList.toggle('on',i===0||cur>=tsteps[i-1]));
+    if(counter)counter.textContent=String(Math.round(cur*100)).padStart(2,'0');
+    return true;
   }};
 }
-const reels=$$('.reel[data-seq]').map(Reel);
+const reels=$$('.film[data-seq]').map(Film);
 
 /* ---------- Menu mobile ---------- */
 const burger=$('.burger'),menu=$('.menu');
@@ -114,7 +124,7 @@ if(form)form.addEventListener('submit',e=>{
 const mobile=matchMedia('(max-width:900px)');
 (function loop(){
   let onReel=false;reels.forEach(r=>{if(r.tick())onReel=true});
-  if(wa)wa.classList.toggle('off',footIn||(onReel&&mobile.matches));
+  if(wa)wa.classList.toggle('off',footIn||onReel);
   requestAnimationFrame(loop);
 })();
 })();
